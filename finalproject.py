@@ -1,0 +1,147 @@
+'''
+Name: Matt Tierney
+CS230: Section 1 (Frydenberg)
+Data: NCAA Football Stadiums
+URL:
+
+Description:
+
+This program takes data on all the NCAA football stadiums in the countries. It investigates three
+querys that rely on user input, and displays visualizations in the forms of metrics, charts, graphs, and maps.
+'''
+
+#Imports
+import pandas as pd
+import streamlit as st
+import numpy as np
+import matplotlib.pyplot as plt
+import plotly.express as px
+import altair as alt
+from PIL import Image
+import pydeck as pdk
+image=Image.open('NCAA_logo.png')
+
+
+#Read stadium data file
+def data():
+    dataframe= pd.read_csv('stadiums-geocoded.csv', index_col='stadium')
+    return dataframe
+
+#First Query: What is the average capacity of stadiums built before (user year) and the average capacity of stadiums built after (user year)
+def query1(y1,y2):
+    df=data() #Refer to data frame
+    newdf=df.loc[(df['built'] < y1) | (df['built'] > y2)] #Locate specific data based on user input
+    beforedf=df.loc[(df['built'] < y1)] #Create dataframes of just stadiums based on user input
+    afterdf=df.loc[(df['built'] > y2)]
+    before_average=np.mean(beforedf['capacity'])#Calculate mean capacites based on uesr input
+    after_average=np.mean(afterdf['capacity'])
+    return newdf,before_average,after_average
+
+def get_conferences():
+    conlist=[] #set empty list
+    for i in (data()['conference']):
+        if i not in conlist:
+            conlist.append(i) #append conferences to empty list
+    return conlist
+def display_confs(selections,clist):
+    df=data()
+    selectedcolumns= (df['conference'].isin(selections)) #Filter the data to only include user selected conferences
+    selected_df=df[selectedcolumns] #Establish dataframe
+    totalcount=len(selected_df) #Count the total rows in the dataframe
+    expansion=selected_df.loc[(selected_df['expanded'].str.len() >0)] #Filter a new dataframe to only include expanded stadiums
+    totalcountex=len(expansion) #Count stadiums expanded
+    if len(selections) >0:
+        percentexpanded=totalcountex/totalcount #Get percent of stadiums expanded
+        percentnoexpanded=(1-percentexpanded) #Get percent of stadiums not expanded
+        percents=[percentexpanded,percentnoexpanded] #For pie chart
+        labels=['Percent of Stadiums Expanded','Percent of Stadiums Not Expanded'] #Labels for pie chart
+        fig,ax=plt.subplots()
+        ax.set_title("Percent of Stadiums Expanded vs Percent of Stadiums Unexpanded For The Selected Conference(s)")
+        ax.pie(percents,labels=labels,autopct='%1.1f%%')
+        st.pyplot(fig) #show plot in streamlit
+
+def q3(big,small,list):
+    df = data() #refer to data set
+    if small == 'FCS': #all statements refer to user input
+        smalldf=df.loc[(df['div'] == 'fcs')]
+        tensmall=smalldf.nsmallest(10, ['capacity'])#filter top 10 smallest stadiums
+        smallmap=tensmall[['latitude','longitude']]
+    else:
+        smalldf=df.loc[(df['div']== 'fbs')]
+        tensmall=smalldf.nsmallest(10, ['capacity'])
+        smallmap = tensmall[['latitude', 'longitude']]
+    if big == 'FCS':
+        bigdf = df.loc[(df['div'] == 'fcs')]
+        tenbig=bigdf.nlargest(10, ['capacity']) #filter 10 largest stadiums
+        bigmap=tenbig[['latitude','longitude']]
+    else:
+        bigdf=df.loc[(df['div']== 'fbs')]
+        tenbig=bigdf.nlargest(10, ['capacity'])
+        bigmap = tenbig[['latitude', 'longitude']]
+    mapdata=smallmap.append(bigmap) #create a data frame to be used in the map
+    st.map(mapdata)#create map
+    st.write('Chart of the Ten Largest Stadiums From The',big)#chart header
+    st.bar_chart(tenbig['capacity'])#bar chart
+    st.write('Chart of the Ten Smallest Stadiums From The', small)#chart header
+    st.bar_chart(tensmall['capacity'])#bar chart
+
+
+def main():
+
+    dataframe = data()
+    # First Query
+    st.image(image,width=200)
+    st.title('Python Final Project: NCAA Football Stadiums Data Visualization')
+    st.header('By: Matt Tierney')
+    st.divider()
+    st.subheader('Query 1: Enter in a start year and an end year to see the average capacity of stadiums before a certain year and after a certain year')
+    year1 = st.number_input('Enter a start year:',min_value=1896)
+    year2 = st.number_input('Enter a end year:',min_value=1896)
+    q1,bef_avg,aft_avg=query1(year1,year2)
+    year1metric='{:,.2f}'.format(bef_avg)
+    year2metric='{:,.2f}'.format(aft_avg)
+    col1,col2=st.columns(2)
+    col1.metric('Average Capacity of Stadiums Before Entered Start Year:',value=year1metric,delta=None)
+    col2.metric(label='Average Capacity of Stadiums After Entered End Year:',value=year2metric,delta=None)
+
+    #Second Query
+    st.divider()
+    st.subheader('Query 2: Select as many conferences as you would like. The percent of stadiums that receieved an expansion within the conferences selected combined will be displayed in a pie chart below.')
+    conference_list = get_conferences()
+    conference_array = np.array(conference_list)
+    option = st.multiselect('Select Conferences:', conference_array)
+    c1data=display_confs(option,conference_list)
+    st.divider()
+
+    #Third Query
+    st.subheader('Query 3: Displays a map and charts of the 10 biggest FBS or FCS conference stadiums and the 10 smallest FBS or FCS stadiums in all of the NCAA in terms of capacity, based on the following input:')
+    divlist= ['FBS','FCS']
+    tenbig=st.selectbox('Would you like to see the location of the 10 biggest FBS or FCS Stadiums?',divlist)
+    tensmall=st.selectbox('Would you like to see the location of the 10 smallest FBS or FCS Stadiums?',divlist)
+    q3(tenbig,tensmall,divlist)
+main()
+#The following code for the map would not work so I resorted to a simple streamlit map.
+# Professor Frydenberg and I were unable to figure out the root cause of this not working.
+#Here is the error message:TypeError: 'tuple' object is not callable
+#  view_state = pdk.ViewState(
+       #latitude=bigmap["latitude"].mean(),
+       #longitude=bigmap["longitude"].mean(),
+       #zoom=11,
+       #pitch=0)
+
+   #layer1 = pdk.Layer('ScatterplotLayer',
+                      #data=bigmap,
+                      #get_position='[longitude,latitude]',
+                      #get_radius=500,
+                      #get_color=[0, 0, 255],  # big red circle
+                      #pickable=True
+                      #)
+   #layer2 = pdk.Layer('ScatterplotLayer',
+                      #data=smallmap,
+                      #get_position='[lon, lat]',
+                      #get_radius=100,
+                      #get_color=[255, 0, 255],  # purple circle
+                      #pickable=True
+                      #)
+   #pmap=pdk.Deck(layers=[layer1],initial_view_state=view_state)
+   #st.pydeck_chart(pmap)
