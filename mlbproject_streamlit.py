@@ -8,8 +8,6 @@ import numpy as np
 dat=pd.read_csv("MLB Data new.csv")
 dat=dat.sort_values(by='Player',ascending=True)#Sort By Player Name
 
-#Image Variable For Import
-pic=Image.open('MLBi1.JPEG')
 
 #Initial Title and Header
 st.title('Scoreboard Science November Issue')
@@ -32,6 +30,5 @@ st.divider()
 #Display Data Frame
 st.header('Utilize our data below to sort values as you wish by clicking on the column names')
 st.dataframe(dat)
-st.image(pic,width=300)
 
 
