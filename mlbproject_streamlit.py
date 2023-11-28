@@ -5,7 +5,7 @@ from PIL import Image
 import numpy as np
 
 #Data import
-dat=pd.read_csv(r"C:\Users\Matt Tierney\OneDrive - Bentley University\CS230\FinalProject\MLB Data new.csv")
+dat=pd.read_csv("MLB Data new.csv")
 dat=dat.sort_values(by='Player',ascending=True)#Sort By Player Name
 
 #Image Variable For Import
